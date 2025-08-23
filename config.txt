@@ -1,0 +1,11 @@
+serverIp = 172.168.141.23
+serverPort = 443
+receiveBufferSize = 16384
+resourcesPath = ./src/main/resources/
+keystoreFile=KeyStore.p12
+keystorePass=123456
+certificateAlias=mediacollection_certificate_server
+commonSecretPassphrase = 1234567890abcdefghijklmnopqrstuvwxyz
+sqliteFilePath = ~/mediacollection.db
+authUser = auth_user
+authPassphrase = auth_pass
