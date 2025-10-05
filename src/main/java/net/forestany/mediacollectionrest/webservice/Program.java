@@ -12,26 +12,26 @@ public class Program
 			net.forestany.forestj.lib.Global.get().resetLog();
 			
 			net.forestany.forestj.lib.LoggingConfig o_loggingConfigAll = new net.forestany.forestj.lib.LoggingConfig();
-			o_loggingConfigAll.setLevel(java.util.logging.Level.INFO);
+            o_loggingConfigAll.setLevel(java.util.logging.Level.INFO);
 			o_loggingConfigAll.setUseConsole(true);
 			
 			o_loggingConfigAll.setConsoleLevel(java.util.logging.Level.WARNING);
 			o_loggingConfigAll.setUseFile(true);
             String s_logPath = "/var/log/mediacollectionrest/";
             if (!net.forestany.forestj.lib.io.File.folderExists(s_logPath)) { net.forestany.forestj.lib.io.File.createDirectory(s_logPath, true); }
-			o_loggingConfigAll.setFileLevel(java.util.logging.Level.INFO);
+            o_loggingConfigAll.setFileLevel(java.util.logging.Level.INFO);
 			o_loggingConfigAll.setFilePath(s_logPath);
 			o_loggingConfigAll.setFileLimit(10000000); // ~ 10.0 MB
 			o_loggingConfigAll.setFileCount(25);
 			
 			o_loggingConfigAll.loadConfig();
-			
+
 			net.forestany.forestj.lib.Global.get().by_logControl = net.forestany.forestj.lib.Global.OFF;
 			net.forestany.forestj.lib.Global.get().by_internalLogControl = net.forestany.forestj.lib.Global.SEVERE + net.forestany.forestj.lib.Global.WARNING;
             net.forestany.forestj.lib.Global.get().by_internalLogControl = net.forestany.forestj.lib.Global.SEVERE + net.forestany.forestj.lib.Global.WARNING + net.forestany.forestj.lib.Global.INFO;
             
             net.forestany.forestj.lib.Global.ilog("++++++++++++++++++++++++++++++++");
-            net.forestany.forestj.lib.Global.ilog("+ Media Collection REST 1.0.0  +");
+            net.forestany.forestj.lib.Global.ilog("+ Media Collection REST 1.0.1  +");
             net.forestany.forestj.lib.Global.ilog("++++++++++++++++++++++++++++++++");
             
             net.forestany.forestj.lib.Global.ilog("");
@@ -61,8 +61,6 @@ public class Program
 
         /* SERVER */
 
-        net.forestany.forestj.lib.Global.ilog(net.forestany.forestj.lib.Helper.generateRandomString(36));
-
         net.forestany.forestj.lib.Cryptography o_cryptography = new net.forestany.forestj.lib.Cryptography(o_config.commonSecretPassphrase, net.forestany.forestj.lib.Cryptography.KEY256BIT);
         
         byte[] a_encrypted = o_cryptography.encrypt(o_config.authPassphrase.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -77,7 +75,7 @@ public class Program
         //o_serverConfig.setSessionDirectory(s_sessionDirectory);
         //o_serverConfig.setSessionMaxAge(new net.forestany.forestj.lib.DateInterval("PT30M"));
         //o_serverConfig.setSessionRefresh(true);
-        o_serverConfig.setForestREST(new MediaCollectionRest(o_config.resourcesPath + "JSONMediaCollection.json", o_cryptography, o_config.authUser, o_config.authPassphrase));
+        o_serverConfig.setForestREST(new MediaCollectionRest(o_config.resourcesPath + "JSONMediaCollectionSmall.json", o_config.resourcesPath + "JSONMediaCollectionRecord.json", o_config.resourcesPath + "JSONMediaCollection.json", o_cryptography, o_config.authUser, o_config.authPassphrase));
 
         o_serverConfig.setBase(
             new net.forestany.forestj.lib.sql.sqlite.BaseSQLite(o_config.sqliteFilePath)

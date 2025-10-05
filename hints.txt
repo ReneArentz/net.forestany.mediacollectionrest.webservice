@@ -2,7 +2,7 @@
 cat /var/log/mediacollectionrest/javaLog_0_0.log | grep -v "^.*INFO.*$"
 
 # start jar manually
-java -jar webservice-1.0.0.jar net.forestany.mediacollectionrest.webservice.Program
+java -jar webservice-1.0.1.jar net.forestany.mediacollectionrest.webservice.Program
 
 # service commands
 systemctl status mediacollectionrest.service 
@@ -13,4 +13,4 @@ systemctl stop mediacollectionrest.service
 scp -r src user@172.168.141.23:/opt/mediacollectionrest/
 
 # copy jar to server if you are in target folder
-scp webservice-1.0.0-shaded.jar user@172.168.141.23:/opt/mediacollectionrest/webservice-1.0.0.jar
+scp webservice-1.0.1-shaded.jar user@172.168.141.23:/opt/mediacollectionrest/webservice-1.0.1.jar

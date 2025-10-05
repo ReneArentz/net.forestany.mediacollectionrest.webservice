@@ -1,0 +1,95 @@
+{
+	"$id": "https://example.com/define.schema.json",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"description": "MediaCollection Record JSON Schema",
+		"type": "object",
+		"mapping": "net.forestany.mediacollectionrest.webservice.MediaCollectionRecord",
+		"properties": {
+			"id": {
+				"type": "integer",
+				"mapping": "ColumnId"
+			},
+			"uuid": {
+				"type": "string",
+				"mapping": "ColumnUUID"
+			},
+			"title": {
+				"type": "string",
+				"mapping": "ColumnTitle"
+			},
+			"mediatype": {
+				"type": "string",
+				"mapping": "ColumnType"
+			},
+			"publication_year": {
+				"type": "integer",
+				"mapping": "ColumnPublicationYear"
+			},
+			"original_title": {
+				"type": "string",
+				"mapping": "ColumnOriginalTitle"
+			},
+			"sub_type": {
+				"type": "string",
+				"mapping": "ColumnSubType"
+			},
+			"filed_under": {
+				"type": "string",
+				"mapping": "ColumnFiledUnder"
+			},
+			"last_seen": {
+				"type": "string",
+				"mapping": "ColumnLastSeen"
+			},
+			"length_in_minutes": {
+				"type": "integer",
+				"mapping": "ColumnLengthInMinutes"
+			},
+			"languages": {
+				"type": "string",
+				"mapping": "ColumnLanguages"
+			},
+			"subtitles": {
+				"type": "string",
+				"mapping": "ColumnSubtitles"
+			},
+			"directors": {
+				"type": "string",
+				"mapping": "ColumnDirectors"
+			},
+			"screenwriters": {
+				"type": "string",
+				"mapping": "ColumnScreenwriters"
+			},
+			"cast": {
+				"type": "string",
+				"mapping": "ColumnCast"
+			},
+			"special_features": {
+				"type": "string",
+				"mapping": "ColumnSpecialFeatures"
+			},
+			"other": {
+				"type": "string",
+				"mapping": "ColumnOther"
+			},
+			"last_modified": {
+				"type": "string",
+				"mapping": "ColumnLastModified"
+			},
+			"deleted": {
+				"type": "string",
+				"mapping": "ColumnDeleted"
+			},
+			"poster": {
+				"type": "string",
+				"mapping": "ColumnPoster"
+			}
+		},
+		"required": [
+			"id",
+			"uuid",
+			"original_title",
+			"publication_year"
+		]
+}

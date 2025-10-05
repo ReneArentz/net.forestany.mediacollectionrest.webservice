@@ -1,12 +1,22 @@
 package net.forestany.mediacollectionrest.webservice;
 
 public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.rest.ForestREST {
+    private net.forestany.forestj.lib.io.JSON o_jsonSmall = null;
+    private net.forestany.forestj.lib.io.JSON o_jsonRecord = null;
     private net.forestany.forestj.lib.io.JSON o_json = null;
     private net.forestany.forestj.lib.Cryptography o_cryptography = null;
     private String s_authUser = null;
     private String s_authPassphrase = null;
 
-    public MediaCollectionRest(String p_s_jsonSchemaFile, net.forestany.forestj.lib.Cryptography p_o_cryptography, String p_s_authUser, String p_s_authPassphrase) throws NullPointerException, IllegalArgumentException, java.io.IOException {
+    public MediaCollectionRest(String p_s_jsonSmallSchemaFile, String p_s_jsonRecordSchemaFile, String p_s_jsonSchemaFile, net.forestany.forestj.lib.Cryptography p_o_cryptography, String p_s_authUser, String p_s_authPassphrase) throws NullPointerException, IllegalArgumentException, java.io.IOException {
+        if (net.forestany.forestj.lib.Helper.isStringEmpty(p_s_jsonSmallSchemaFile)) {
+            throw new NullPointerException("Parameter for json small schema file is null");
+        }
+
+        if (net.forestany.forestj.lib.Helper.isStringEmpty(p_s_jsonRecordSchemaFile)) {
+            throw new NullPointerException("Parameter for json record schema file is null");
+        }
+
         if (net.forestany.forestj.lib.Helper.isStringEmpty(p_s_jsonSchemaFile)) {
             throw new NullPointerException("Parameter for json schema file is null");
         }
@@ -23,6 +33,8 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
             throw new NullPointerException("Parameter for authentication passphrase file is null");
         }
 
+        this.o_jsonSmall = new net.forestany.forestj.lib.io.JSON(p_s_jsonSmallSchemaFile);
+        this.o_jsonRecord = new net.forestany.forestj.lib.io.JSON(p_s_jsonRecordSchemaFile);
         this.o_json = new net.forestany.forestj.lib.io.JSON(p_s_jsonSchemaFile);
         this.o_cryptography = p_o_cryptography;
         this.s_authUser = p_s_authUser;
@@ -64,23 +76,34 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
                 (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("all"))
             ) {
-                JSONMediaCollection o_jsonMediaCollection = new JSONMediaCollection();
-                o_jsonMediaCollection.Timestamp = java.time.LocalDateTime.now().withNano(0);
+                JSONMediaCollectionSmall o_jsonMediaCollectionSmall = new JSONMediaCollectionSmall();
+                o_jsonMediaCollectionSmall.Timestamp = java.time.LocalDateTime.now().withNano(0);
 
                 LanguageRecord o_languageRecordInstance = new LanguageRecord();
-                MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
+                MediaCollectionRecordSmall o_mediaCollectionRecordSmallInstance = new MediaCollectionRecordSmall();
+
+                o_mediaCollectionRecordSmallInstance.Columns = java.util.Arrays.asList(
+                    "Id",
+                    "UUID",
+                    "PublicationYear",
+                    "OriginalTitle",
+                    "LastModified",
+                    "Deleted",
+                    "Poster"
+                );
+                
                 this.setOtherBaseSource(o_languageRecordInstance);
-                this.setOtherBaseSource(o_mediaCollectionRecordInstance);
+                this.setOtherBaseSource(o_mediaCollectionRecordSmallInstance);
 
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "iterate all records for deletion check");
 
                 /* delete records with deleted timestamp older than 30 days */
-                for (MediaCollectionRecord o_mediaCollectionRecord : o_mediaCollectionRecordInstance.getRecords(true)) {
-                    if ( (o_mediaCollectionRecord.ColumnDeleted != null) && (o_mediaCollectionRecord.ColumnDeleted.isBefore( java.time.LocalDateTime.now().withNano(0).minusDays(30) )) ) {
-                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "delete '" + o_mediaCollectionRecord.ColumnOriginalTitle + "' - deleted: '" + o_mediaCollectionRecord.ColumnDeleted + "'");
+                for (MediaCollectionRecordSmall o_mediaCollectionRecordSmall : o_mediaCollectionRecordSmallInstance.getRecords(true)) {
+                    if ( (o_mediaCollectionRecordSmall.ColumnDeleted != null) && (o_mediaCollectionRecordSmall.ColumnDeleted.isBefore( java.time.LocalDateTime.now().withNano(0).minusDays(30) )) ) {
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "delete '" + o_mediaCollectionRecordSmall.ColumnOriginalTitle + "' - deleted: '" + o_mediaCollectionRecordSmall.ColumnDeleted + "'");
                         
-                        this.setOtherBaseSource(o_mediaCollectionRecord);
-                        o_mediaCollectionRecord.deleteRecord();
+                        this.setOtherBaseSource(o_mediaCollectionRecordSmall);
+                        o_mediaCollectionRecordSmall.deleteRecord();
                     }
                 }
 
@@ -89,33 +112,33 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 for (LanguageRecord o_languageRecord : o_languageRecordInstance.getRecords(true)) {
                     net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "add 'language' record: '" + o_languageRecord.ColumnLanguage + "'");
                     
-                    o_jsonMediaCollection.Languages.add(o_languageRecord);
+                    o_jsonMediaCollectionSmall.Languages.add(o_languageRecord);
                 }     
-                
+
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "iterate 'mediacollection' records");
 
-                for (MediaCollectionRecord o_mediaCollectionRecord : o_mediaCollectionRecordInstance.getRecords(true)) {
+                for (MediaCollectionRecordSmall o_mediaCollectionRecordSmall : o_mediaCollectionRecordSmallInstance.getRecords(true)) {
                     String s_posterBytesLength = "0";
 
-                    if (!net.forestany.forestj.lib.Helper.isStringEmpty(o_mediaCollectionRecord.ColumnPoster)) {
-                        s_posterBytesLength = o_mediaCollectionRecord.ColumnPoster.length() + "";
+                    if (!net.forestany.forestj.lib.Helper.isStringEmpty(o_mediaCollectionRecordSmall.ColumnPoster)) {
+                        s_posterBytesLength = o_mediaCollectionRecordSmall.ColumnPoster.length() + "";
                     }
                     
-                    o_mediaCollectionRecord.ColumnPoster = s_posterBytesLength;
+                    o_mediaCollectionRecordSmall.ColumnPoster = s_posterBytesLength;
 
-                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "add 'mediacollection' record: '" + o_mediaCollectionRecord.ColumnUUID + "' - '" + o_mediaCollectionRecord.ColumnOriginalTitle + "'");
+                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "add 'mediacollection' record: '" + o_mediaCollectionRecordSmall.ColumnUUID + "' - '" + o_mediaCollectionRecordSmall.ColumnOriginalTitle + "'");
                         
-                    o_jsonMediaCollection.Records.add(o_mediaCollectionRecord);
+                    o_jsonMediaCollectionSmall.Records.add(o_mediaCollectionRecordSmall);
                 }
 
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Encoding data to json string.");
 
-                s_foo = this.o_json.jsonEncode(o_jsonMediaCollection);
+                s_foo = this.o_jsonSmall.jsonEncode(o_jsonMediaCollectionSmall);
                 
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Encoded data to json string.");
             } else if (
                 (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
-                (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("poster"))
+                (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("record"))
             ) {
                 if (this.getSeed().getRequestHeader().getParameters().size() < 1) {
                     throw new Exception("Bad GET request. No parameters available.");
@@ -131,10 +154,58 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "find 'mediacollection' record with uuid '" + this.getSeed().getRequestHeader().getParameters().get("uuid") + "'.");
 
                 if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList( this.getSeed().getRequestHeader().getParameters().get("uuid") ))) {
+                    String s_posterBytesLength = "0";
+
+                    if (!net.forestany.forestj.lib.Helper.isStringEmpty(o_mediaCollectionRecordInstance.ColumnPoster)) {
+                        s_posterBytesLength = o_mediaCollectionRecordInstance.ColumnPoster.length() + "";
+                    }
+                    
+                    o_mediaCollectionRecordInstance.ColumnPoster = s_posterBytesLength;
+
+                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "', encoding record to json string");
+
+                    s_foo = this.o_jsonRecord.jsonEncode(o_mediaCollectionRecordInstance);
+                
+                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "encoded record to json string.");
+                } else {
+                    return "400;Record not found";
+                }
+            } else if (
+                (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
+                (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("poster"))
+            ) {
+                if (this.getSeed().getRequestHeader().getParameters().size() < 1) {
+                    throw new Exception("Bad GET request. No parameters available.");
+                }
+
+                if (!this.getSeed().getRequestHeader().getParameters().containsKey("uuid")) {
+                    throw new Exception("Bad GET request. No 'uuid' parameter available.");
+                }
+
+                boolean b_keepUncompressed = false;
+
+                if ((this.getSeed().getRequestHeader().getParameters().containsKey("uncompressed")) && (this.getSeed().getRequestHeader().getParameters().get("uncompressed").toLowerCase().contentEquals("true"))) {
+                    b_keepUncompressed = true;
+                }
+
+                MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
+                this.setOtherBaseSource(o_mediaCollectionRecordInstance);
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "find 'mediacollection' record with uuid '" + this.getSeed().getRequestHeader().getParameters().get("uuid") + "'.");
+
+                if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList( this.getSeed().getRequestHeader().getParameters().get("uuid") ))) {
                     if (o_mediaCollectionRecordInstance.ColumnPoster != null) {
-                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "', adding poster hex string bytes ('" + (o_mediaCollectionRecordInstance.ColumnPoster.length() / 2) + "') to response");
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "', adding poster hex string bytes ('" + (o_mediaCollectionRecordInstance.ColumnPoster.length()) + "') to response");
                         
-                        s_foo = o_mediaCollectionRecordInstance.ColumnPoster;
+                        if (b_keepUncompressed) {
+                            s_foo = o_mediaCollectionRecordInstance.ColumnPoster;
+                        } else {
+                            String s_bar = compress(o_mediaCollectionRecordInstance.ColumnPoster);
+
+                            net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "compressed to '" + s_bar.length() + "' bytes");
+
+                            s_foo = s_bar;
+                        }
                     } else {
                         net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "', adding poster hex string bytes ('0') to response");
                         
@@ -242,22 +313,33 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Decoding received json data.");
 
                 String s_jsonPostData = this.getSeed().getPostData().entrySet().iterator().next().getKey();
-                JSONMediaCollection o_jsonMediaCollection = (JSONMediaCollection)o_json.jsonDecode(java.util.Arrays.asList(s_jsonPostData));
+                JSONMediaCollectionSmall o_jsonMediaCollectionSmall = (JSONMediaCollectionSmall)this.o_jsonSmall.jsonDecode(java.util.Arrays.asList(s_jsonPostData));
 
-                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Received json data decoded. '" + o_jsonMediaCollection.Records.size() + "' records.");
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Received json data decoded. '" + o_jsonMediaCollectionSmall.Records.size() + "' records.");
 
-                MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
-                this.setOtherBaseSource(o_mediaCollectionRecordInstance);
+                MediaCollectionRecordSmall o_mediaCollectionRecordSmallInstance = new MediaCollectionRecordSmall();
+
+                o_mediaCollectionRecordSmallInstance.Columns = java.util.Arrays.asList(
+                    "Id",
+                    "UUID",
+                    "PublicationYear",
+                    "OriginalTitle",
+                    "LastModified",
+                    "Deleted",
+                    "Poster"
+                );
+
+                this.setOtherBaseSource(o_mediaCollectionRecordSmallInstance);
                 
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "iterate all 'mediacollection' records for deletion check");
 
                 /* delete records with deleted timestamp older than 30 days */
-                for (MediaCollectionRecord o_mediaCollectionRecord : o_mediaCollectionRecordInstance.getRecords(true)) {
-                    if ( (o_mediaCollectionRecord.ColumnDeleted != null) && (o_mediaCollectionRecord.ColumnDeleted.isBefore( java.time.LocalDateTime.now().withNano(0).minusDays(30) )) ) {
-                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "delete '" + o_mediaCollectionRecord.ColumnOriginalTitle + "' - deleted: '" + o_mediaCollectionRecord.ColumnDeleted + "'");
+                for (MediaCollectionRecordSmall o_mediaCollectionRecordSmall : o_mediaCollectionRecordSmallInstance.getRecords(true)) {
+                    if ( (o_mediaCollectionRecordSmall.ColumnDeleted != null) && (o_mediaCollectionRecordSmall.ColumnDeleted.isBefore( java.time.LocalDateTime.now().withNano(0).minusDays(30) )) ) {
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "delete '" + o_mediaCollectionRecordSmall.ColumnOriginalTitle + "' - deleted: '" + o_mediaCollectionRecordSmall.ColumnDeleted + "'");
                         
-                        this.setOtherBaseSource(o_mediaCollectionRecord);
-                        o_mediaCollectionRecord.deleteRecord();
+                        this.setOtherBaseSource(o_mediaCollectionRecordSmall);
+                        o_mediaCollectionRecordSmall.deleteRecord();
                     }
                 }
 
@@ -267,44 +349,34 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "iterate received 'mediacollection' records");
 
                 /* iterate all sended records */
-                if (o_jsonMediaCollection.Records.size() > 0) {
-                    for (MediaCollectionRecord jsonMediaCollectionRecord : o_jsonMediaCollection.Records) {
-                        if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList(jsonMediaCollectionRecord.ColumnUUID))) {
-                            if ( (jsonMediaCollectionRecord.ColumnDeleted == null) && (o_mediaCollectionRecordInstance.ColumnDeleted == null) && (jsonMediaCollectionRecord.ColumnLastModified.isAfter(o_mediaCollectionRecordInstance.ColumnLastModified)) ) {
-                                /* sended record found, sended deleted is null on both sides, and sended record last modified timestamp is newer -> update all */
-                                o_mediaCollectionRecordInstance.ColumnUUID = jsonMediaCollectionRecord.ColumnUUID;
-                                o_mediaCollectionRecordInstance.ColumnTitle = jsonMediaCollectionRecord.ColumnTitle;
-                                o_mediaCollectionRecordInstance.ColumnType = jsonMediaCollectionRecord.ColumnType;
-                                o_mediaCollectionRecordInstance.ColumnPublicationYear = jsonMediaCollectionRecord.ColumnPublicationYear;
-                                o_mediaCollectionRecordInstance.ColumnOriginalTitle = jsonMediaCollectionRecord.ColumnOriginalTitle;
-                                o_mediaCollectionRecordInstance.ColumnSubType = jsonMediaCollectionRecord.ColumnSubType;
-                                o_mediaCollectionRecordInstance.ColumnFiledUnder = jsonMediaCollectionRecord.ColumnFiledUnder;
-                                o_mediaCollectionRecordInstance.ColumnLastSeen = jsonMediaCollectionRecord.ColumnLastSeen;
-                                o_mediaCollectionRecordInstance.ColumnLengthInMinutes = jsonMediaCollectionRecord.ColumnLengthInMinutes;
-                                o_mediaCollectionRecordInstance.ColumnLanguages = jsonMediaCollectionRecord.ColumnLanguages;
-                                o_mediaCollectionRecordInstance.ColumnSubtitles = jsonMediaCollectionRecord.ColumnSubtitles;
-                                o_mediaCollectionRecordInstance.ColumnDirectors = jsonMediaCollectionRecord.ColumnDirectors;
-                                o_mediaCollectionRecordInstance.ColumnScreenwriters = jsonMediaCollectionRecord.ColumnScreenwriters;
-                                o_mediaCollectionRecordInstance.ColumnCast = jsonMediaCollectionRecord.ColumnCast;
-                                o_mediaCollectionRecordInstance.ColumnSpecialFeatures = jsonMediaCollectionRecord.ColumnSpecialFeatures;
-                                o_mediaCollectionRecordInstance.ColumnOther = jsonMediaCollectionRecord.ColumnOther;
-                                o_mediaCollectionRecordInstance.ColumnLastModified = jsonMediaCollectionRecord.ColumnLastModified;
+                if (o_jsonMediaCollectionSmall.Records.size() > 0) {
+                    MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
+                    this.setOtherBaseSource(o_mediaCollectionRecordInstance);
 
-                                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - deleted is null on both sides, and sended record last modified timestamp is newer '" + o_mediaCollectionRecordInstance.ColumnLastModified + "'");
+                    for (MediaCollectionRecordSmall jsonMediaCollectionRecordSmall : o_jsonMediaCollectionSmall.Records) {
+                        if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList(jsonMediaCollectionRecordSmall.ColumnUUID))) {
+                            if ( (jsonMediaCollectionRecordSmall.ColumnDeleted == null) && (o_mediaCollectionRecordInstance.ColumnDeleted == null) && (jsonMediaCollectionRecordSmall.ColumnLastModified.isAfter(o_mediaCollectionRecordInstance.ColumnLastModified)) ) {
+                                /* sended record found, sended deleted is null on both sides, and sended record last modified timestamp is newer -> note uuid to send all record columns later */
+                                
+                                String s_posterBytesLength = "0";
 
-                                try {
-                                    if (o_mediaCollectionRecordInstance.updateRecord(true) >= 0) {
-                                        a_responseList.add(o_mediaCollectionRecordInstance.ColumnUUID);
-                                    }
-                                } catch (IllegalStateException o_exc) {
-                                    /* catch primary/unique violation and ignore it */
-                                    net.forestany.forestj.lib.Global.ilogWarning(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' error: " + o_exc.getMessage());
+                                if (!net.forestany.forestj.lib.Helper.isStringEmpty(o_mediaCollectionRecordInstance.ColumnPoster)) {
+                                    s_posterBytesLength = o_mediaCollectionRecordInstance.ColumnPoster.length() + "";
                                 }
-                            } else if ( (jsonMediaCollectionRecord.ColumnDeleted != null) && (!jsonMediaCollectionRecord.ColumnDeleted.equals(o_mediaCollectionRecordInstance.ColumnDeleted)) ) {
+                                
+                                /* return UUID with 'UpdateWithPoster' if amounts of poster bytes on both sides do not match, otherwise just 'Update' because sended last modified timestamp is newer */
+                                if ( ((net.forestany.forestj.lib.Helper.isStringEmpty(jsonMediaCollectionRecordSmall.ColumnPoster)) && (s_posterBytesLength.contentEquals("0"))) || (jsonMediaCollectionRecordSmall.ColumnPoster.contentEquals(s_posterBytesLength)) ) {
+                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "return UUID with 'Update' command for '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - sended last modified timestamp is newer");
+                                    a_responseList.add(o_mediaCollectionRecordInstance.ColumnUUID + ";" + "Update");
+                                } else {
+                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "return UUID with 'UpdateWithPoster' command for '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - sended last modified timestamp is newer and amounts of poster bytes on both sides do not match");
+                                    a_responseList.add(o_mediaCollectionRecordInstance.ColumnUUID + ";" + "UpdateWithPoster");
+                                }
+                            } else if ( (jsonMediaCollectionRecordSmall.ColumnDeleted != null) && (!jsonMediaCollectionRecordSmall.ColumnDeleted.equals(o_mediaCollectionRecordInstance.ColumnDeleted)) ) {
                                 /* sended record found, sended deleted is not null and local is not equal to it -> only update deleted */
-                                o_mediaCollectionRecordInstance.ColumnDeleted = jsonMediaCollectionRecord.ColumnDeleted;
+                                o_mediaCollectionRecordInstance.ColumnDeleted = jsonMediaCollectionRecordSmall.ColumnDeleted;
 
-                                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - sended deleted('" + jsonMediaCollectionRecord.ColumnDeleted + "') is not null and local('" + ((o_mediaCollectionRecordInstance.ColumnDeleted != null) ? o_mediaCollectionRecordInstance.ColumnDeleted : "null") + "') is not equal to it");
+                                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - sended deleted('" + jsonMediaCollectionRecordSmall.ColumnDeleted + "') is not null and local('" + ((o_mediaCollectionRecordInstance.ColumnDeleted != null) ? o_mediaCollectionRecordInstance.ColumnDeleted : "null") + "') is not equal to it");
 
                                 try {
                                     o_mediaCollectionRecordInstance.updateRecord(true);
@@ -314,51 +386,49 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                                 }
                             }
                         } else {
-                            if (jsonMediaCollectionRecord.ColumnDeleted == null) {
+                            if (jsonMediaCollectionRecordSmall.ColumnDeleted == null) {
                                 /* sended record not found and deleted is null */
-                                try {
-                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "check if record exists with original title and publication year");
+                                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "check if record exists with original title and publication year");
 
-                                    /* prepare media collection record instance */
-                                    o_mediaCollectionRecordInstance = new MediaCollectionRecord();
-                                    this.setOtherBaseSource(o_mediaCollectionRecordInstance);
+                                /* prepare media collection record instance */
+                                o_mediaCollectionRecordSmallInstance = new MediaCollectionRecordSmall();
 
-                                    /* set filters */
-                                    o_mediaCollectionRecordInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("OriginalTitle", jsonMediaCollectionRecord.ColumnOriginalTitle, "=", "AND"));
-                                    o_mediaCollectionRecordInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("PublicationYear", jsonMediaCollectionRecord.ColumnPublicationYear, "=", "AND"));
-                                    o_mediaCollectionRecordInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("Deleted", "NULL", "IS", "AND"));
+                                o_mediaCollectionRecordSmallInstance.Columns = java.util.Arrays.asList(
+                                    "Id",
+                                    "UUID",
+                                    "PublicationYear",
+                                    "OriginalTitle",
+                                    "LastModified",
+                                    "Deleted",
+                                    "Poster"
+                                );
 
-                                    String s_uuidAppendix = "";
+                                this.setOtherBaseSource(o_mediaCollectionRecordSmallInstance);
 
-                                    /* check if record exists with original title and publication year */
-                                    if (o_mediaCollectionRecordInstance.getRecords().size() > 0) {
-                                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found identical record with '" + jsonMediaCollectionRecord.ColumnOriginalTitle + "' AND '" + jsonMediaCollectionRecord.ColumnPublicationYear + "' AND Deleted IS NULL");
-                                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "set deleted timestamp to sended record with '" + jsonMediaCollectionRecord.ColumnOriginalTitle + "' AND '" + jsonMediaCollectionRecord.ColumnPublicationYear + "', because first record on server wins");
+                                /* set filters */
+                                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("OriginalTitle", jsonMediaCollectionRecordSmall.ColumnOriginalTitle, "=", "AND"));
+                                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("PublicationYear", jsonMediaCollectionRecordSmall.ColumnPublicationYear, "=", "AND"));
+                                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("Deleted", "NULL", "IS", "AND"));
 
-                                        /* set deleted column, because the record is already there with same 'original title', 'publication year' and 'deleted'(null) */
-                                        /* first record on server wins */
-                                        jsonMediaCollectionRecord.ColumnDeleted = java.time.LocalDateTime.now().withNano(0);
+                                /* check if record exists with original title and publication year */
+                                if (o_mediaCollectionRecordSmallInstance.getRecords().size() > 0) {
+                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found identical record with '" + jsonMediaCollectionRecordSmall.ColumnOriginalTitle + "' AND '" + jsonMediaCollectionRecordSmall.ColumnPublicationYear + "' AND Deleted IS NULL");
+                                    
+                                    /* record is already on server side with same 'original title', 'publication year' and 'deleted'(null) */
+                                    /* first record on server wins */
+                                    
+                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "return UUID with 'Delete' command and deleted timestamp so sender can set record to deleted on their side");
 
-                                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "deleted timestamp set to '" + jsonMediaCollectionRecord.ColumnDeleted + "'");
-                                        
-                                        /* return deleted timestamp with uuid so sender can set record to deleted on their side */
-                                        java.time.ZonedDateTime o_zonedDatetime = jsonMediaCollectionRecord.ColumnDeleted.atZone(java.time.ZoneId.systemDefault());
-		                                String s_deleted = java.time.format.DateTimeFormatter.ISO_INSTANT.format(o_zonedDatetime.withZoneSameInstant(java.time.ZoneId.of("UTC")));
-		                                s_uuidAppendix = s_deleted.substring(0, s_deleted.length() - 1);
-                                    }
+                                    /* return UUID with 'DeleteLocal' command and deleted timestamp so sender can set record to deleted on their side */
+                                    java.time.ZonedDateTime o_zonedDatetime = java.time.LocalDateTime.now().withNano(0).atZone(java.time.ZoneId.systemDefault());
+                                    String s_deleted = java.time.format.DateTimeFormatter.ISO_INSTANT.format(o_zonedDatetime.withZoneSameInstant(java.time.ZoneId.of("UTC")));
+                                    s_deleted = s_deleted.substring(0, s_deleted.length() - 1);
 
-                                    /* insert record and save uuid to send poster data later */
-                                    this.setOtherBaseSource(jsonMediaCollectionRecord);
+                                    a_responseList.add(jsonMediaCollectionRecordSmall.ColumnUUID + ";" + "Delete" + ";" + s_deleted);
+                                } else {
+                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "return UUID with 'Insert' command for a new record on server side");
 
-                                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "insert record '" + jsonMediaCollectionRecord.ColumnOriginalTitle + "'");
-
-                                    if (jsonMediaCollectionRecord.insertRecord() > 0) {
-                                        /* return uuid for poster sending poster data later */
-                                        a_responseList.add(jsonMediaCollectionRecord.ColumnUUID + s_uuidAppendix);
-                                    }
-                                } catch (IllegalStateException o_exc) {
-                                    /* catch primary/unique violation and ignore it */
-                                    net.forestany.forestj.lib.Global.ilogWarning(this.getSeed().getSalt() + " " + "insert record '" + jsonMediaCollectionRecord.ColumnOriginalTitle + "' error: " + o_exc.getMessage());
+                                    a_responseList.add(jsonMediaCollectionRecordSmall.ColumnUUID + ";" + "Insert");
                                 }
                             }
                         }
@@ -384,6 +454,121 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                 }
             } else if (
                 (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
+                (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("insert"))
+            ) {
+                if (this.getSeed().getPostData().size() < 1) {
+                    throw new Exception("Bad POST request. No post data available.");
+                }
+
+                if (this.getSeed().getPostData().size() != 1) {
+                    throw new Exception("Bad POST request. No json post data available.");
+                }
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Decoding received json record.");
+
+                String s_jsonPostData = this.getSeed().getPostData().entrySet().iterator().next().getKey();
+                MediaCollectionRecord o_jsonMediaCollectionRecord = (MediaCollectionRecord)this.o_jsonRecord.jsonDecode(java.util.Arrays.asList(s_jsonPostData));
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Received json record decoded. '" + o_jsonMediaCollectionRecord.ColumnUUID + "' - '" + o_jsonMediaCollectionRecord.ColumnOriginalTitle + "'");
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "check if record exists with original title and publication year");
+
+                /* prepare media collection record instance */
+                MediaCollectionRecordSmall o_mediaCollectionRecordSmallInstance = new MediaCollectionRecordSmall();
+
+                o_mediaCollectionRecordSmallInstance.Columns = java.util.Arrays.asList(
+                    "Id",
+                    "UUID",
+                    "PublicationYear",
+                    "OriginalTitle",
+                    "LastModified",
+                    "Deleted",
+                    "Poster"
+                );
+
+                this.setOtherBaseSource(o_mediaCollectionRecordSmallInstance);
+
+                /* set filters */
+                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("OriginalTitle", o_jsonMediaCollectionRecord.ColumnOriginalTitle, "=", "AND"));
+                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("PublicationYear", o_jsonMediaCollectionRecord.ColumnPublicationYear, "=", "AND"));
+                o_mediaCollectionRecordSmallInstance.Filters.add(new net.forestany.forestj.lib.sql.Filter("Deleted", "NULL", "IS", "AND"));
+
+                /* check if record exists with original title and publication year */
+                if (o_mediaCollectionRecordSmallInstance.getRecords().size() < 1) {
+                    try {
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "insert record '" + o_jsonMediaCollectionRecord.ColumnOriginalTitle + "'");
+                        this.setOtherBaseSource(o_jsonMediaCollectionRecord);
+
+                        if (o_jsonMediaCollectionRecord.insertRecord() > 0) {
+                            /* return uuid for successful insert operation */
+                            s_foo = o_jsonMediaCollectionRecord.ColumnUUID;
+                        }
+                    } catch (IllegalStateException o_exc) {
+                        /* catch primary/unique violation and ignore it */
+                        net.forestany.forestj.lib.Global.ilogWarning(this.getSeed().getSalt() + " " + "insert record '" + o_jsonMediaCollectionRecord.ColumnOriginalTitle + "' error: " + o_exc.getMessage());
+                    }
+                } else {
+                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "record exists with original title '" + o_jsonMediaCollectionRecord.ColumnOriginalTitle + "' and publication year '" + o_jsonMediaCollectionRecord.ColumnPublicationYear + "'");
+                    s_foo = "Exists";
+                }
+            } else if (
+                (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
+                (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("update"))
+            ) {
+                if (this.getSeed().getPostData().size() < 1) {
+                    throw new Exception("Bad POST request. No post data available.");
+                }
+
+                if (this.getSeed().getPostData().size() != 1) {
+                    throw new Exception("Bad POST request. No json post data available.");
+                }
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Decoding received json record.");
+
+                String s_jsonPostData = this.getSeed().getPostData().entrySet().iterator().next().getKey();
+                MediaCollectionRecord o_jsonMediaCollectionRecord = (MediaCollectionRecord)this.o_jsonRecord.jsonDecode(java.util.Arrays.asList(s_jsonPostData));
+
+                net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "Received json record decoded. '" + o_jsonMediaCollectionRecord.ColumnUUID + "' - '" + o_jsonMediaCollectionRecord.ColumnOriginalTitle + "'");
+
+                MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
+                this.setOtherBaseSource(o_mediaCollectionRecordInstance);
+
+                if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList(o_jsonMediaCollectionRecord.ColumnUUID))) {
+                    if ( (o_jsonMediaCollectionRecord.ColumnDeleted == null) && (o_mediaCollectionRecordInstance.ColumnDeleted == null) && (o_jsonMediaCollectionRecord.ColumnLastModified.isAfter(o_mediaCollectionRecordInstance.ColumnLastModified)) ) {
+                        /* sended record found, sended deleted is null on both sides, and sended record last modified timestamp is newer -> update record */
+                        o_mediaCollectionRecordInstance.ColumnUUID = o_jsonMediaCollectionRecord.ColumnUUID;
+                        o_mediaCollectionRecordInstance.ColumnTitle = o_jsonMediaCollectionRecord.ColumnTitle;
+                        o_mediaCollectionRecordInstance.ColumnType = o_jsonMediaCollectionRecord.ColumnType;
+                        o_mediaCollectionRecordInstance.ColumnPublicationYear = o_jsonMediaCollectionRecord.ColumnPublicationYear;
+                        o_mediaCollectionRecordInstance.ColumnOriginalTitle = o_jsonMediaCollectionRecord.ColumnOriginalTitle;
+                        o_mediaCollectionRecordInstance.ColumnSubType = o_jsonMediaCollectionRecord.ColumnSubType;
+                        o_mediaCollectionRecordInstance.ColumnFiledUnder = o_jsonMediaCollectionRecord.ColumnFiledUnder;
+                        o_mediaCollectionRecordInstance.ColumnLastSeen = o_jsonMediaCollectionRecord.ColumnLastSeen;
+                        o_mediaCollectionRecordInstance.ColumnLengthInMinutes = o_jsonMediaCollectionRecord.ColumnLengthInMinutes;
+                        o_mediaCollectionRecordInstance.ColumnLanguages = o_jsonMediaCollectionRecord.ColumnLanguages;
+                        o_mediaCollectionRecordInstance.ColumnSubtitles = o_jsonMediaCollectionRecord.ColumnSubtitles;
+                        o_mediaCollectionRecordInstance.ColumnDirectors = o_jsonMediaCollectionRecord.ColumnDirectors;
+                        o_mediaCollectionRecordInstance.ColumnScreenwriters = o_jsonMediaCollectionRecord.ColumnScreenwriters;
+                        o_mediaCollectionRecordInstance.ColumnCast = o_jsonMediaCollectionRecord.ColumnCast;
+                        o_mediaCollectionRecordInstance.ColumnSpecialFeatures = o_jsonMediaCollectionRecord.ColumnSpecialFeatures;
+                        o_mediaCollectionRecordInstance.ColumnOther = o_jsonMediaCollectionRecord.ColumnOther;
+                        o_mediaCollectionRecordInstance.ColumnLastModified = o_jsonMediaCollectionRecord.ColumnLastModified;
+
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' - deleted is null on both sides, and sended record last modified timestamp is newer '" + o_mediaCollectionRecordInstance.ColumnLastModified + "'");
+
+                        try {
+                            if (o_mediaCollectionRecordInstance.updateRecord(true) >= 0) {
+                                /* return uuid for successful update operation */
+                                s_foo = o_mediaCollectionRecordInstance.ColumnUUID;
+                            }
+                        } catch (IllegalStateException o_exc) {
+                            /* catch primary/unique violation and ignore it */
+                            net.forestany.forestj.lib.Global.ilogWarning(this.getSeed().getSalt() + " " + "update record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' error: " + o_exc.getMessage());
+                        }
+                    }
+                }
+            } else if (
+                (!net.forestany.forestj.lib.Helper.isStringEmpty( this.getSeed().getRequestHeader().getFile() )) &&
                 (this.getSeed().getRequestHeader().getFile().toLowerCase().contentEquals("poster"))
             ) {
                 if (this.getSeed().getPostData().size() < 1) {
@@ -398,15 +583,29 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
                     throw new Exception("Bad POST request. No post data with 'posterdata' key available.");
                 }
 
+                boolean b_incomingUncompressed = false;
+
+                if ((this.getSeed().getPostData().containsKey("uncompressed")) && (this.getSeed().getPostData().get("uncompressed").toLowerCase().contentEquals("true"))) {
+                    b_incomingUncompressed = true;
+                }
+
                 MediaCollectionRecord o_mediaCollectionRecordInstance = new MediaCollectionRecord();
                 this.setOtherBaseSource(o_mediaCollectionRecordInstance);
 
                 net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "find 'mediacollection' record with uuid '" + this.getSeed().getPostData().get("uuid") + "'.");
 
                 if (o_mediaCollectionRecordInstance.getOneRecord(java.util.Arrays.asList("UUID"), java.util.Arrays.asList( this.getSeed().getPostData().get("uuid") ))) {
-                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' for updating poster data (" + (this.getSeed().getPostData().get("posterdata").length() / 2) + " bytes)");
+                    net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "found record '" + o_mediaCollectionRecordInstance.ColumnOriginalTitle + "' for updating poster data (" + (this.getSeed().getPostData().get("posterdata").length()) + " bytes)");
                     
-                    o_mediaCollectionRecordInstance.ColumnPoster = this.getSeed().getPostData().get("posterdata");
+                    if (b_incomingUncompressed) {
+                        o_mediaCollectionRecordInstance.ColumnPoster = this.getSeed().getPostData().get("posterdata");
+                    } else {
+                        String s_bar = decompress(this.getSeed().getPostData().get("posterdata"));
+
+                        net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "decompressed to '" + s_bar.length() + "' bytes");
+
+                        o_mediaCollectionRecordInstance.ColumnPoster = s_bar;
+                    }
                     
                     if (o_mediaCollectionRecordInstance.updateRecord(true) < 0) {
                         throw new Exception("Record could not be updated.");
@@ -420,7 +619,6 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
             } else {
                 throw new Exception("Bad POST request.");
             }
-
 
             return s_foo;
         } catch (Exception o_exc) {
@@ -485,5 +683,44 @@ public class MediaCollectionRest extends net.forestany.forestj.lib.net.https.res
         net.forestany.forestj.lib.Global.ilog(this.getSeed().getSalt() + " " + "authorization granted");
 
         return true;
+    }
+
+    /* compress a hex string to Base64 */
+    public static String compress(String p_s_hexString) throws Exception {
+        /* convert hex string to byte array */
+        byte[] input = net.forestany.forestj.lib.Helper.hexStringToBytes(p_s_hexString);
+
+        /* compress */
+        java.util.zip.Deflater deflater = new java.util.zip.Deflater();
+        deflater.setInput(input);
+        deflater.finish();
+
+        byte[] buffer = new byte[input.length];
+        int compressedDataLength = deflater.deflate(buffer);
+        deflater.end();
+
+        byte[] compressedBytes = java.util.Arrays.copyOf(buffer, compressedDataLength);
+
+        /* encode as Base64 string */
+        return java.util.Base64.getEncoder().encodeToString(compressedBytes);
+    }
+
+    /* decompress Base64 back to hex string */
+    public static String decompress(String p_s_base64Compressed) throws Exception {
+        /* decode Base64 to compressed bytes */
+        byte[] compressedData = java.util.Base64.getDecoder().decode(p_s_base64Compressed);
+
+        /* decompress */
+        java.util.zip.Inflater inflater = new java.util.zip.Inflater();
+        inflater.setInput(compressedData);
+
+        byte[] buffer = new byte[10_000_000]; /* big enough buffer */
+        int length = inflater.inflate(buffer);
+        inflater.end();
+
+        byte[] result = java.util.Arrays.copyOf(buffer, length);
+
+        /* convert back to hex string */
+        return net.forestany.forestj.lib.Helper.bytesToHexString(result, false);
     }
 }
